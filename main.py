@@ -14,7 +14,7 @@ def load_config(config_path="config.txt"):
     return config['image_dir'], int(config['n_workers'])
 
 def loader_worker(image_dir, input_queue, n_workers):
-    # Map labels to a dictionary for O(1) lookups
+    # map labels to a dictionary for O(1) lookups
     labels = {}
     labels_path = os.path.join(image_dir, "labels.txt")
     if os.path.exists(labels_path):
@@ -30,14 +30,14 @@ def loader_worker(image_dir, input_queue, n_workers):
             filepath = os.path.join(image_dir, filename)
             expected_text = labels.get(filename, "")
             
-            # Append the expected text to the queue payload
+            # append the expected text to the queue payload
             input_queue.put((current_id, filename, filepath, expected_text))
             current_id += 1
             
     for _ in range(n_workers):
         input_queue.put(None)
 
-"""To measure the difference between two strings"""
+"""measure the difference between two strings"""
 def calculate_levenshtein_distance(s1, s2):
     if len(s1) < len(s2):
         return calculate_levenshtein_distance(s2, s1)
@@ -69,7 +69,8 @@ def calculate_accuracy(expected, extracted):
     return ((max_len - distance) / max_len) * 100
 
 def ocr_worker(input_queue, output_queue):
-    custom_config = r'--tessdata-dir ./tessdata --oem 1 --psm 8 -c tessedit_char_whitelist=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ' # this config works on most photos
+    # this config works on most photos
+    custom_config = r'--tessdata-dir ./tessdata --oem 1 --psm 8 -c tessedit_char_whitelist=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ' 
     
     while True:
         task = input_queue.get()
@@ -82,7 +83,7 @@ def ocr_worker(input_queue, output_queue):
         extracted_text = pytesseract.image_to_string(filepath, config=custom_config).strip()
         processing_time_ms = int((time.time() - start_time) * 1000)
         
-        # Calculate character recognition percentage
+        # calculate character recognition percentage
         accuracy = calculate_accuracy(expected_text, extracted_text)
         
         output_queue.put((task_id, filename, expected_text, extracted_text, f"{accuracy:.2f}%", processing_time_ms))
@@ -123,30 +124,14 @@ def run_pipeline(image_dir, n_workers, output_file="ocr_results.csv"):
     return time.time() - start_time
 
 if __name__ == '__main__':
-    image_dir, base_workers = load_config("config.txt")
-    worker_counts_to_test = sorted(list(set([1, 2, 4, 8] + [base_workers])))
-        
-    print(f"Starting OCR Benchmarks on directory: {image_dir}")
-    print("-" * 50)
+    # load configuration from config.txt
+    image_dir, n_workers = load_config("config.txt")
     
-    results = {}
-    t1_time = None
+    print(f"Starting parallel OCR Pipeline on directory: {image_dir}")
+    print(f"Configured for {n_workers} OCR worker(s)...")
     
-    for n in worker_counts_to_test:
-        output_filename = f"ocr_results_{n}_workers.csv"
-        print(f"Running pipeline with {n} worker(s)...")
-        elapsed = run_pipeline(image_dir, n, output_file=output_filename)
-        results[n] = elapsed
-        
-        if n == 1:
-            t1_time = elapsed
-            
-        speedup = t1_time / elapsed if t1_time else 1.0
-        print(f"Completed in {elapsed:.2f} seconds. Speedup (S): {speedup:.2f}x")
-        print("-" * 50)
-        
-    print("\nBenchmark Summary:")
-    print(f"{'Workers (n)':<15} | {'Time (Tn)':<15} | {'Speedup (T1/Tn)':<15}")
-    for n, elapsed in results.items():
-        speedup = t1_time / elapsed
-        print(f"{n:<15} | {elapsed:<15.2f} | {speedup:<15.2f}x")
+    # execute exactly once using the required filename
+    elapsed = run_pipeline(image_dir, n_workers, output_file="ocr_results.csv")
+    
+    print(f"Pipeline completed in {elapsed:.2f} seconds.")
+    print("Results successfully saved to ocr_results.csv.")
