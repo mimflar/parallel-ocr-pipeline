@@ -91,7 +91,8 @@ def ocr_worker(input_queue, output_queue):
         output_queue.put((task_id, filename, expected_text, extracted_text, f"{accuracy:.2f}%", processing_time_ms))
 
 def writer_worker(output_queue, output_file="ocr_results.csv"):
-    busy = 0.0
+    start = time.perf_counter()
+    waiting = 0.0
     total_accuracy = 0.0
     count = 0
 
@@ -100,15 +101,16 @@ def writer_worker(output_queue, output_file="ocr_results.csv"):
         writer.writerow(['ID', 'Filename', 'Expected Text', 'Extracted Text', 'Accuracy', 'Processing Time (ms)'])
 
         while True:
+            t = time.perf_counter()
             result = output_queue.get()
+            waiting += time.perf_counter() - t
             if result is None:
                 break
-            t = time.perf_counter()
             writer.writerow(result)
-            busy += time.perf_counter() - t
             total_accuracy += float(result[4].rstrip('%'))
             count += 1
 
+    busy = time.perf_counter() - start - waiting
     avg_accuracy = total_accuracy / count if count else 0.0
     print(f"Writer busy time: {busy * 1000:.2f} ms")
     print(f"Average accuracy: {avg_accuracy:.2f}% over {count} images")
