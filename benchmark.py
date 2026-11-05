@@ -1,7 +1,6 @@
 import os
 os.environ["OMP_THREAD_LIMIT"] = "1"
 
-import matplotlib.pyplot as plt
 from main import load_config, run_pipeline
 
 N_RUNS = 3
@@ -9,6 +8,7 @@ WORKER_COUNTS = [1, 2, 4, 8]
 
 
 if __name__ == '__main__':
+    import matplotlib.pyplot as plt
     image_dir, _ = load_config("config.txt")
 
     print(f"Starting OCR Benchmarks on directory: {image_dir}")
