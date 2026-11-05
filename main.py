@@ -91,7 +91,7 @@ def ocr_worker(input_queue, output_queue):
         output_queue.put((task_id, filename, expected_text, extracted_text, f"{accuracy:.2f}%", processing_time_ms))
 
 def writer_worker(output_queue, output_file="ocr_results.csv"):
-    cpu_start = time.process_time()
+    busy = 0.0
     total_accuracy = 0.0
     count = 0
 
@@ -103,13 +103,14 @@ def writer_worker(output_queue, output_file="ocr_results.csv"):
             result = output_queue.get()
             if result is None:
                 break
+            t = time.perf_counter()
             writer.writerow(result)
+            busy += time.perf_counter() - t
             total_accuracy += float(result[4].rstrip('%'))
             count += 1
 
-    cpu_ms = (time.process_time() - cpu_start) * 1000
     avg_accuracy = total_accuracy / count if count else 0.0
-    print(f"Writer CPU time: {cpu_ms:.2f} ms")
+    print(f"Writer busy time: {busy * 1000:.2f} ms")
     print(f"Average accuracy: {avg_accuracy:.2f}% over {count} images")
 
 def run_pipeline(image_dir, n_workers, output_file="ocr_results.csv"):
