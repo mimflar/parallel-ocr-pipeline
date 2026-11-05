@@ -4,6 +4,8 @@ import time
 import multiprocessing as mp
 import pytesseract
 
+os.environ["OMP_THREAD_LIMIT"] = "1"
+
 def load_config(config_path="config.txt"):
     config = {}
     with open(config_path, 'r') as f:
@@ -89,15 +91,18 @@ def ocr_worker(input_queue, output_queue):
         output_queue.put((task_id, filename, expected_text, extracted_text, f"{accuracy:.2f}%", processing_time_ms))
 
 def writer_worker(output_queue, output_file="ocr_results.csv"):
+    busy = 0.0
     with open(output_file, 'w', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
-        writer.writerow(['ID', 'Filename', 'Expected Text', 'Extracted Text', 'Accuracy', 'Processing Time (ms)'])
-        
+        writer.writerow([...])  # header as before
         while True:
             result = output_queue.get()
             if result is None:
-                break 
+                break
+            t = time.perf_counter()
             writer.writerow(result)
+            busy += time.perf_counter() - t
+    print(f"Writer busy time: {busy * 1000:.2f} ms")
 
 def run_pipeline(image_dir, n_workers, output_file="ocr_results.csv"):
     input_queue = mp.Queue(maxsize=100) 
